@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 
-# Ép hệ thống cài openpyxl và unidecode khi mở web
+# Ép hệ thống cài openpyxl và unidecode khi mở web lên
 try:
     import unidecode
     import openpyxl
@@ -17,36 +17,25 @@ import re
 import io
 import json
 
-# Giao diện rộng rãi, hiện đại
+# Cấu hình giao diện rộng rãi, sạch sẽ
 st.set_page_config(
     page_title="Hệ Thống Bộ Lọc SASPA", 
     page_icon="🛡️", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# Thêm chút CSS để làm đẹp giao diện, đổi màu bảng và các nút
+# Thêm CSS custom giống hệt bản cũ của mày cho đẹp
 st.markdown("""
     <style>
-        .main { background-color: #f5f7f9; }
-        .stTable { background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h1 { color: #1e3d59; font-family: 'Helvetica Neue', Arial, sans-serif; }
-        h3 { color: #17b890; }
-        .stButton>button { background-color: #17b890; color: white; border-radius: 6px; }
+        .main { background-color: #ffffff; }
+        h1, h2, h3 { color: #1e3d59; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        .stButton>button { background-color: #f0f2f6; color: #31333f; border-radius: 4px; border: 1px solid #d3d3d3; }
     </style>
 """, unsafe_allow_html=True)
 
-# Thanh bên trái (Sidebar) chứa thông tin hướng dẫn
-with st.sidebar:
-    st.markdown("## 🛡️ **SASPA MANAGEMENT**")
-    st.info("Hệ thống xử lý tự động dữ liệu tách riêng từ DiscordChatExporter định dạng **JSON**.")
-    st.markdown("---")
-    st.markdown("### 💡 Hướng dẫn nhanh:")
-    st.write("Mày có file nào thì ném vào ô đó, không nhất thiết phải ném cả 2 cùng lúc nha mày!")
-
-# Khu vực tiêu đề chính giữa màn hình
+# Tiêu đề chính của web
 st.title("🛡️ BỘ LỌC TỔNG HỢP HỒ SƠ & GIỜ TRỰC SASPA")
-st.caption("Phiên bản nâng cấp: Hỗ trợ Tách Riêng File Giờ Trực & File Vật Dụng")
 st.markdown("---")
 
 def chuan_hoa_ten_vat_dung(text):
@@ -75,19 +64,15 @@ def doi_phut_thanh_chuoi(tong_phut):
         return f"{gio}h"
     return f"{gio}h{phut:02d}"
 
-# --- KHU VỰC UPLOAD FILE CHIA LÀM 2 Ô RIÊNG BIỆT ---
-st.subheader("📥 Bước 1: Tải các file JSON dữ liệu lên")
-col_file1, col_file2 = st.columns(2)
-
-with col_file1:
-    file_duty = st.file_uploader("⏳ Ném file JSON GIỜ TRỰC (DUTY) vào đây:", type=["json"])
-with col_file2:
-    file_vat_dung = st.file_uploader("📦 Ném file JSON VẬT DỤNG (HỒ SƠ) vào đây:", type=["json"])
+# --- KHU VỰC UPLOAD FILE TÁCH BIỆT (JSON) ---
+st.markdown("### 📥 Tải các file JSON dữ liệu lên")
+file_duty = st.file_uploader("⏳ Ném file JSON GIỜ TRỰC (DUTY) vào đây:", type=["json"])
+file_vat_dung = st.file_uploader("📦 Ném file JSON VẬT DỤNG (HỒ SƠ) vào đây:", type=["json"])
 
 ket_qua_duty = []
 ket_qua_vat_dung = []
 
-# Xử lý file Giờ trực nếu có
+# Xử lý đọc file Giờ trực
 if file_duty is not None:
     try:
         data_duty = json.load(file_duty)
@@ -109,9 +94,9 @@ if file_duty is not None:
                         "Số phút": phut_tinh_duoc
                     })
     except Exception as e:
-        st.error(f"Lỗi đọc file Giờ Trực rồi mày ơi: {e}")
+        st.error(f"Lỗi đọc file Giờ Trực: {e}")
 
-# Xử lý file Vật dụng nếu có
+# Xử lý đọc file Vật dụng
 if file_vat_dung is not None:
     try:
         data_vd = json.load(file_vat_dung)
@@ -143,65 +128,45 @@ if file_vat_dung is not None:
                                 "Số lượng": so_luong
                             })
     except Exception as e:
-        st.error(f"Lỗi đọc file Vật Dụng rồi mày ơi: {e}")
+        st.error(f"Lỗi đọc file Vật Dụng: {e}")
 
-# --- HIỂN THỊ KẾT QUẢ ---
+# --- HIỂN THỊ KẾT QUẢ ĐÚNG THEO GIAO DIỆN CŨ ---
 if file_duty is not None or file_vat_dung is not None:
-    st.markdown("---")
-    st.subheader("📊 Bước 2: Kết quả phân tích hệ thống")
-
-    # Tính toán số liệu tổng quan (Metrics)
-    tong_nhan_vien = 0
-    tong_phut_ca_phe = 0
-    if ket_qua_duty:
-        df_temp_duty = pd.DataFrame(ket_qua_duty)
-        tong_nhan_vien = df_temp_duty["Tên Nhân Viên (Tên Máy Chủ)"].nunique()
-        tong_phut_ca_phe = df_temp_duty["Số phút"].sum()
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    tong_items = 0
+    # 1. HỘP THÔNG BÁO MÀU XANH LÁ QUEN THUỘC ĐÂY RỒI MÀY ƠI
+    tong_so_luong_do = 0
     if ket_qua_vat_dung:
         df_temp_vd = pd.DataFrame(ket_qua_vat_dung)
-        tong_items = df_temp_vd["Số lượng"].sum()
-
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        st.metric(label="👥 Nhân Viên Đã Trực", value=f"{tong_nhan_vien} Đồng chí")
-    with col_m2:
-        st.metric(label="⏳ Tổng Thời Gian Phục Vụ", value=doi_phut_thanh_chuoi(tong_phut_ca_phe))
-    with col_m3:
-        st.metric(label="📦 Tổng Vật Dụng Thu Giữ", value=f"{tong_items} Tấm/Cơ giáp")
-
-    st.markdown("<br>", unsafe_with_html=True)
-
-    # Chia 2 cột hiển thị bảng dữ liệu
-    col_b1, col_b2 = st.columns(2)
+        tong_so_luong_do = df_temp_vd["Số lượng"].sum()
+        
+    if file_vat_dung is not None:
+        st.success(f"🔥 Đã xử lý xong xuôi! Tìm thấy {tong_so_luong_do} vật dụng.")
+    elif file_duty is not None:
+        st.success(f"🔥 Đã xử lý xong xuôi file Giờ Trực!")
 
     df_duty_tong = pd.DataFrame()
     df_tong_hop = pd.DataFrame()
 
-    with col_b1:
-        if ket_qua_duty:
-            st.markdown("### 🕒 BẢNG TỔNG HỢP GIỜ TRỰC")
-            df_duty_Goc = pd.DataFrame(ket_qua_duty)
-            df_duty_tong = df_duty_Goc.groupby("Tên Nhân Viên (Tên Máy Chủ)")["Số phút"].sum().reset_index()
-            df_duty_tong["Tổng Thời Gian Trực"] = df_duty_tong["Số phút"].apply(doi_phut_thanh_chuoi)
-            
-            df_bnd_duty = df_duty_tong[["Tên Nhân Viên (Tên Máy Chủ)", "Tổng Thời Gian Trực"]]
-            st.dataframe(df_bnd_duty, use_container_width=True, hide_index=True)
-        else:
-            st.info("Chưa có file Giờ Trực hoặc không tìm thấy dữ liệu ca trực.")
+    # 2. HIỂN THỊ BẢNG VẬT DỤNG TO RÕ NHƯ CŨ
+    if ket_qua_vat_dung:
+        st.markdown("## 📋 Bảng tổng cộng nhanh cuối ngày:")
+        df_chi_tiet = pd.DataFrame(ket_qua_vat_dung)
+        df_tong_hop = df_chi_tiet.groupby("Vật dụng chuẩn hóa")["Số lượng"].sum().reset_index()
+        df_tong_hop.columns = ["Vật dụng chuẩn hóa", "Tổng số lượng"]
+        st.dataframe(df_tong_hop, use_container_width=True, hide_index=False)
 
-    with col_b2:
-        if ket_qua_vat_dung:
-            st.markdown("### 📋 BẢNG TỔNG HỢP VẬT DỤNG / CƠ GIÁP")
-            df_chi_tiet = pd.DataFrame(ket_qua_vat_dung)
-            df_tong_hop = df_chi_tiet.groupby("Vật dụng chuẩn hóa")["Số lượng"].sum().reset_index()
-            df_tong_hop.columns = ["Tên Vật Dụng / Cơ Giáp", "Tổng Số Lượng"]
-            st.dataframe(df_tong_hop, use_container_width=True, hide_index=True)
-        else:
-            st.info("Chưa có file Vật Dụng hoặc không tìm thấy dữ liệu hồ sơ.")
+    # 3. HIỂN THỊ BẢNG GIỜ TRỰC (NẰM DƯỚI)
+    if ket_qua_duty:
+        st.markdown("## 🕒 Bảng tổng hợp giờ trực nhân viên:")
+        df_duty_Goc = pd.DataFrame(ket_qua_duty)
+        df_duty_tong = df_duty_Goc.groupby("Tên Nhân Viên (Tên Máy Chủ)")["Số phút"].sum().reset_index()
+        df_duty_tong["Tổng Thời Gian Trực"] = df_duty_tong["Số phút"].apply(doi_phut_thanh_chuoi)
+        
+        df_bnd_duty = df_duty_tong[["Tên Nhân Viên (Tên Máy Chủ)", "Tổng Thời Gian Trực"]]
+        st.dataframe(df_bnd_duty, use_container_width=True, hide_index=False)
 
-    # Nút xuất Excel chung
+    # 4. NÚT TẢI FILE EXCEL TỔNG HỢP Ở CUỐI TRANG
     if ket_qua_vat_dung or ket_qua_duty:
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -212,10 +177,9 @@ if file_duty is not None or file_vat_dung is not None:
                 df_chi_tiet.to_excel(writer, sheet_name="Chi tiết vật dụng", index=False)
                 df_tong_hop.to_excel(writer, sheet_name="Tổng cộng Vật dụng", index=False)
         
-        st.markdown("---")
-        st.markdown("### 📥 Bước 3: Xuất báo cáo lưu trữ")
+        st.markdown("<br>", unsafe_allow_html=True)
         st.download_button(
-            label="🟢 BẤM ĐỂ TẢI FILE EXCEL BÁO CÁO TỔNG HỢP (.XLSX)",
+            label="📥 TẢI FILE EXCEL TỔNG HỢP",
             data=buffer.getvalue(),
             file_name="Bao_Cao_Tong_Hop_SASPA.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
