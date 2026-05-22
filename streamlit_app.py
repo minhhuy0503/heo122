@@ -34,7 +34,7 @@ st.markdown("""
         h3 { color: #17b890; }
         .stButton>button { background-color: #17b890; color: white; border-radius: 6px; }
     </style>
-""", unsafe_with_html=True)
+""", unsafe_allow_html=True)
 
 # Thanh bên trái (Sidebar) chứa thông tin hướng dẫn
 with st.sidebar:
